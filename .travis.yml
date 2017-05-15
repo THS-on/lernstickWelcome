@@ -1,0 +1,21 @@
+services:
+  - docker
+before_install:
+  - sudo apt-get -qq update
+  - sudo apt-get install -y imagemagick
+  - docker build -t lernstick-maven .
+
+script:
+  - mkdir /tmp/smoke && docker run -v /tmp/smoke:/tmp/smoke lernstick-maven:latest
+  - ./smoke-test/smoke-test.sh
+
+before_deploy:
+  - ./smoke-test/create-gh-pages-post.sh
+
+deploy:
+  provider: pages
+  local_dir: /tmp/gh-pages
+  skip_cleanup: true
+  github_token: $GITHUB_TOKEN # Set in travis-ci.org dashboard
+  on:
+    branch: master
