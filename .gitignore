@@ -6,3 +6,6 @@
 
 # build id file
 /src/ch/fhnw/lernstickwelcome/build
+
+#Maven build target
+/target/
