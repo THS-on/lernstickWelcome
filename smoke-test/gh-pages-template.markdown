@@ -7,7 +7,7 @@ categories: commit
 
 Commit Massage: REPLACE_MSG  
 
-Travis-CI URL: https://travis-ci.org/REPLACE_USER/builds/REPLACE_ID
+Travis-CI URL: [https://travis-ci.org/REPLACE_USER/builds/REPLACE_ID](https://travis-ci.org/REPLACE_USER/builds/REPLACE_ID)
 
 JAR: [JAR]({{ site.url }}{{ site.baseurl }}/jars/REPLACE_COMMIT.jar)
 
