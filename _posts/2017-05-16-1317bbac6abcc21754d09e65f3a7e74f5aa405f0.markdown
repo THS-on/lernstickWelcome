@@ -1,0 +1,15 @@
+---
+layout: post
+title:  "1317bbac6abcc21754d09e65f3a7e74f5aa405f0"
+date:   2017-05-16
+categories: commit
+---
+
+Commit Massage: added smoke-test  
+
+Travis-CI URL: https://travis-ci.org/REPLACE_USER/builds/233002483
+
+JAR: [JAR]({{ site.url }}{{ site.baseurl }}/jars/1317bbac6abcc21754d09e65f3a7e74f5aa405f0.jar)
+
+![Picture]({{ site.url }}{{ site.baseurl }}/images/1317bbac6abcc21754d09e65f3a7e74f5aa405f0.png)
+

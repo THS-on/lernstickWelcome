@@ -1,0 +1,15 @@
+---
+layout: post
+title:  "c95adcc830b6be6920d7487a69ed81838b825bea"
+date:   2017-05-16
+categories: commit
+---
+
+Commit Massage: fixed script  
+
+Travis-CI URL: https://travis-ci.org/REPLACE_USER/builds/233008553
+
+JAR: [JAR]({{ site.url }}{{ site.baseurl }}/jars/c95adcc830b6be6920d7487a69ed81838b825bea.jar)
+
+![Picture]({{ site.url }}{{ site.baseurl }}/images/c95adcc830b6be6920d7487a69ed81838b825bea.png)
+

@@ -1,0 +1,15 @@
+---
+layout: post
+title:  "9f19d930ed14d396b7ede03fce83dd621d00524f"
+date:   2017-05-17 04:54:31
+categories: commit
+---
+
+Commit Massage: fixed script  
+
+Travis-CI URL: https://travis-ci.org/THS-on/lernstickWelcome/builds/233094780
+
+JAR: [JAR]({{ site.url }}{{ site.baseurl }}/jars/9f19d930ed14d396b7ede03fce83dd621d00524f.jar)
+
+![Picture]({{ site.url }}{{ site.baseurl }}/images/9f19d930ed14d396b7ede03fce83dd621d00524f.png)
+
