@@ -155,7 +155,7 @@ public class WelcomeUtil {
      */
     public static boolean isInternalFileSystemMountAllowed() {
         return !Files.exists(Paths.get(WelcomeConstants.EXAM_POLKIT_PATH,
-                "10-udisks2-mount-system_strict.pkla"));
+                "05-udisks2-mount-system_strict.rules"));
     }
 
     /**
@@ -168,7 +168,7 @@ public class WelcomeUtil {
      */
     public static boolean isExternalFileSystemMountAllowed() {
         return !Files.exists(Paths.get(WelcomeConstants.EXAM_POLKIT_PATH,
-                "10-udisks2-mount_strict.pkla"));
+                "05-udisks2-mount_strict.rules"));
     }
 
     /**

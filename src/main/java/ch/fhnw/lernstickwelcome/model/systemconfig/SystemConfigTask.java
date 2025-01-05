@@ -192,7 +192,7 @@ public class SystemConfigTask implements Processable<String> {
     }
     
     /**
-     * Update the access to other filesystems by editing the PKLA File.
+     * Update the access to other filesystems by editing the rules File.
      * <br>
      * Uses the {@link #allowAccessToOtherFilesystems} Property to check how the
      * option has to be adjusted.
@@ -202,9 +202,9 @@ public class SystemConfigTask implements Processable<String> {
         try {
             if (allowAccessToInternalFilesystems.get()) {
                 Files.delete(Paths.get(WelcomeConstants.EXAM_POLKIT_PATH,
-                        "10-udisks2-mount-system_strict.pkla"));
+                        "05-udisks2-mount-system_strict.rules"));
             } else {
-                hardenPKLAs("udisks2-mount-system");
+                hardenRules("udisks2-mount-system");
             }
         } catch (IOException ex) {
             LOGGER.log(Level.WARNING, "", ex);
@@ -213,9 +213,9 @@ public class SystemConfigTask implements Processable<String> {
         try {
             if (allowAccessToExternalFilesystems.get()) {
                 Files.delete(Paths.get(WelcomeConstants.EXAM_POLKIT_PATH,
-                        "10-udisks2-mount_strict.pkla"));
+                        "05-udisks2-mount_strict.rules"));
             } else {
-                hardenPKLAs("udisks2-mount");
+                hardenRules("udisks2-mount");
             }
         } catch (IOException ex) {
             LOGGER.log(Level.WARNING, "", ex);
@@ -704,44 +704,45 @@ public class SystemConfigTask implements Processable<String> {
 
         // add polkit rules to enforce authentication
         // rules for our own applications
-        addStrictPKLA("10-welcome_strict.pkla", "enforce authentication before "
+        addStrictRule("05-welcome_strict.rules", "enforce authentication before "
                 + "running the Lernstick Welcome application",
                 "ch.lernstick.welcome");
-        addStrictPKLA("10-dlcopy_strict.pkla", "enforce authentication before "
+        addStrictRule("05-dlcopy_strict.rules", "enforce authentication before "
                 + "running the Lernstick storage media management application",
                 "ch.lernstick.dlcopy");
-        addStrictPKLA("10-wrapper-synaptic_strict.pkla", "enforce "
+        addStrictRule("05-wrapper-synaptic_strict.rules", "enforce "
                 + "authentication before running the synaptic wrapper script",
                 "ch.lernstick.wrapper-synaptic");
-        addStrictPKLA("10-wrapper-gdebi-gtk_strict.pkla", "enforce "
+        addStrictRule("05-wrapper-gdebi-gtk_strict.rules", "enforce "
                 + "authentication before running the gdebi-gtk wrapper script",
                 "ch.lernstick.wrapper-gdebi-gtk");
 
         // harden our custom rules for third party applications
-        hardenPKLAs("jbackpack", "gnome-system-log", "packagekit");
+        hardenRules("jbackpack", "gnome-system-log", "packagekit");
     }
 
     /**
-     * Adds an action with a description to the given pkla-file.<br>
+     * Adds an action with a description to the given rules-file.<br>
      * This new rule for the PolicyKit Local Authority results into a password
      * request when trying to run this action.
      *
-     * @param fileName the pkla file in which the action should be saved
+     * @param fileName the rules file in which the action should be saved
      * @param description description of the action
      * @param action the action that should be run
      */
-    private void addStrictPKLA(String fileName, String description,
+    private void addStrictRule(String fileName, String description,
             String action) throws ProcessingException {
 
         Path strictPoliciesDir = getStrictPoliciesDir();
         Path strictPath = strictPoliciesDir.resolve(fileName);
-        String strictWelcomeRule
-                = "[" + description + "]\n"
-                + "Identity=unix-user:*\n"
-                + "Action=" + action + "\n"
-                + "ResultAny=auth_self_keep\n"
-                + "ResultInactive=auth_self_keep\n"
-                + "ResultActive=auth_self_keep\n";
+        String strictWelcomeRule = "// " +  description + "\n"
+                + "polkit.addRule(function(action, subject) {\n"
+                + "    if (action.id == \"" + action + "\")\n"
+                + "    {\n"
+                + "        return polkit.Result.AUTH_SELF_KEEP;\n"
+                + "    }\n"
+                + "});";
+
         try {
             Files.write(strictPath, strictWelcomeRule.getBytes());
         } catch (IOException ex) {
@@ -752,36 +753,35 @@ public class SystemConfigTask implements Processable<String> {
     }
 
     /**
-     * Hardens the rule in an pkla-files to restrict access to the action by the
+     * Hardens the rule in an rules-files to restrict access to the action by the
      * PolicyKit Local Authority.
      *
-     * @param pklas The actions that should be restricted.
+     * @param rules The actions that should be restricted.
      * @throws ProcessingException
      */
-    private void hardenPKLAs(String... pklas) throws ProcessingException {
-        Pattern yesPattern = Pattern.compile("(.*)=yes");
+    private void hardenRules(String... rules) throws ProcessingException {
+        Pattern yesPattern = Pattern.compile("(polkit\\.Result\\.YES)");
         Path strictPoliciesDir = getStrictPoliciesDir();
-        for (String pkla : pklas) {
+        for (String rule : rules) {
             try {
                 Path lenientPath = Paths.get(WelcomeConstants.LOCAL_POLKIT_PATH,
-                        "10-" + pkla + ".pkla");
+                        "10-" + rule + ".rules");
                 List<String> lenientLines = Files.readAllLines(
                         lenientPath, StandardCharsets.UTF_8);
                 List<String> strictLines = new ArrayList<>();
                 for (String lenientLine : lenientLines) {
                     Matcher matcher = yesPattern.matcher(lenientLine);
-                    if (matcher.matches()) {
-                        lenientLine = matcher.group(1) + "=auth_self_keep";
-                    }
+                    lenientLine = matcher.replaceFirst("polkit.Result.AUTH_SELF_KEEP");
                     strictLines.add(lenientLine);
                 }
+                // polkit uses lexographical ordering. Using "05-" as prefix ensures that the strict rules are processed first
                 Path strictPath = strictPoliciesDir.resolve(
-                        "10-" + pkla + "_strict.pkla");
+                        "05-" + rule + "_strict.rules");
                 Files.write(strictPath, strictLines, StandardCharsets.UTF_8);
             } catch (IOException ex) {
                 LOGGER.log(Level.WARNING, "", ex);
                 throw new ProcessingException("Error",
-                        "SystemconfigTask.cantWritePasswordPolicy", pkla);
+                        "SystemconfigTask.cantWritePasswordPolicy", rule);
             }
         }
     }

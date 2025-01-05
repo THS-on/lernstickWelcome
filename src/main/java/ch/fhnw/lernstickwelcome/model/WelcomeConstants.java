@@ -57,11 +57,9 @@ public final class WelcomeConstants {
     public static final String URL_WHITELIST_FILENAME
             = "/etc/lernstick-firewall//proxy.d/default.conf";
     public static final String LOCAL_POLKIT_PATH
-            = "/etc/polkit-1/localauthority/50-local.d";
+            = "/etc/polkit-1/rules.d";
     public static final String EXAM_POLKIT_PATH
-            = "/etc/polkit-1/localauthority/55-lernstick-exam.d";
-    public static final Path UDISKS_PKLA_PATH = Paths.get(
-    		"/etc/polkit-1/localauthority/50-local.d/10-udisks2.pkla");
+            = "/etc/polkit-1/rules.d";
     public static final String EMPTY_PASSWORD_HINT_FILE = 
             "/home/user/.kde/share/config/empty_passwd_info";
     public static final String SQUID_ACCESS_LOG_FILE_PATH = "/var/log/squid/access.log";
