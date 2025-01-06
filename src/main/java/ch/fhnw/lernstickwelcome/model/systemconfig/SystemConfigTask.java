@@ -698,37 +698,6 @@ public class SystemConfigTask implements Processable<String> {
      * @throws ProcessingException
      */
     private void passwordEnabled() throws ProcessingException {
-        // TODO: the password hint is deprecated
-        // remove this code block somewhen in the future...
-
-        // disable password hint
-        File configFile = new File(WelcomeConstants.EMPTY_PASSWORD_HINT_FILE);
-        if (!configFile.exists()) {
-            try (OutputStreamWriter osw = new OutputStreamWriter(
-                    new FileOutputStream(configFile), Charset.defaultCharset()
-            )) {
-                // write kdialog config file
-                osw.write("[Notification Messages]\n"
-                        + "show=false");
-
-                // fix ownership of kdialog config file:
-                Path path = configFile.toPath();
-                UserPrincipalLookupService lookupService
-                        = FileSystems.getDefault().getUserPrincipalLookupService();
-                // set user
-                Files.setOwner(path,
-                        lookupService.lookupPrincipalByName("user"));
-                // set group
-                PosixFileAttributeView fileAttributeView
-                        = Files.getFileAttributeView(path,
-                                PosixFileAttributeView.class);
-                fileAttributeView.setGroup(
-                        lookupService.lookupPrincipalByGroupName("user"));
-            } catch (IOException ex) {
-                LOGGER.log(Level.SEVERE, "", ex);
-            }
-        }
-
         // set password in properties as changed
         showPasswordDialog = false;
         properties.setProperty(WelcomeConstants.SHOW_PASSWORD_DIALOG,
