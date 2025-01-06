@@ -223,28 +223,20 @@ public class SystemConfigTask implements Processable<String> {
     }
 
     /**
-     * Loads the bootconfig info by reading out values from the xmlBootConfig
-     * and the syslinuxConfigFile.
+     * Loads the bootconfig info by reading the genric boot config file
      */
     private void getBootConfigInfos() {
-        // Read out the boot loader timeout in seconds
+        // Read boot config
         try {
-            timeoutSeconds.set(getTimeout());
-        } catch (IOException | DBusException ex) {
-            LOGGER.log(Level.WARNING, "could not set boot timeout value", ex);
-        }
-
-        // Read XmlBootConfig
-        try {
-            File xmlBootConfigFile = getXmlBootConfigFile();
+            File xmlBootConfigFile = getGenericBootConfigFile();
             if (xmlBootConfigFile != null) {
                 // Convert the boot config to a xml
                 Document xmlBootDocument = WelcomeUtil.parseXmlFile(
                         xmlBootConfigFile);
                 xmlBootDocument.getDocumentElement().normalize();
-                // Search for the system tag
+                // Search for the lernstick tag
                 Node systemNode = xmlBootDocument.getElementsByTagName(
-                        "system").item(0);
+                    "lernstick").item(0);
                 Element systemElement = (Element) systemNode;
                 // Read out the systemnameProperty (text tag)
                 Node node = systemElement.getElementsByTagName("text").item(0);
@@ -256,10 +248,16 @@ public class SystemConfigTask implements Processable<String> {
                 if (node != null) {
                     systemversion.setValue(node.getTextContent());
                 }
+                // Read out the systemversion (version tag)
+                node = systemElement.getElementsByTagName("timeout").item(0);
+                if (node != null) {
+                    timeoutSeconds.set(Integer.parseInt(node.getTextContent()));
+                }
+
             }
         } catch (ParserConfigurationException | SAXException
-                | IOException | DBusException ex) {
-            LOGGER.log(Level.WARNING, "could not parse xmlboot config", ex);
+                | IOException | DBusException | NumberFormatException ex) {
+            LOGGER.log(Level.WARNING, "could not parse boot config", ex);
         }
     }
 
@@ -375,6 +373,50 @@ public class SystemConfigTask implements Processable<String> {
     private void updateBootMenus(File directory, int timeout,
             String systemName, String systemVersion) throws DBusException {
 
+        //generic boot config
+        File genericConfigFile = new File(directory + WelcomeConstants.BOOT_META);
+        if (genericConfigFile.exists()) {
+            try {
+                // Convert the boot config to a xml
+                Document xmlBootDocument = WelcomeUtil.parseXmlFile(
+                    genericConfigFile);
+                xmlBootDocument.getDocumentElement().normalize();
+                // Search for the lernstick tag
+                Node systemNode = xmlBootDocument.
+                        getElementsByTagName("lernstick").item(0);
+                Element systemElement = (Element) systemNode;
+                // Read out the systemnameProperty (text tag)
+                Node node = systemElement.getElementsByTagName("text").item(0);
+                if (node != null) {
+                    node.setTextContent(systemName);
+                }
+                // Read out the systemversion (version tag)
+                node = systemElement.getElementsByTagName("version").item(0);
+                if (node != null) {
+                    node.setTextContent(systemVersion);
+                }
+                // Read out the timeoutSeconds (timemout tag)
+                node = systemElement.getElementsByTagName("timeout").item(0);
+                if (node != null) {
+                    node.setTextContent(String.valueOf(timeout));
+                }
+
+                // write changes back to config file
+                TransformerFactory transformerFactory
+                        = TransformerFactory.newInstance();
+                Transformer transformer = transformerFactory.newTransformer();
+                transformer.setOutputProperty(OutputKeys.INDENT, "yes");
+                DOMSource source = new DOMSource(xmlBootDocument);
+                StreamResult result = new StreamResult(genericConfigFile);
+                transformer.transform(source, result);
+            } catch (ParserConfigurationException | SAXException | IOException
+                | DOMException | TransformerException ex) {
+                    LOGGER.log(Level.WARNING, "can not update generic boot config", ex);
+            }
+        } else {
+            LOGGER.log(Level.WARNING, "generic boot config does not exist in path: {0}", genericConfigFile.getPath());
+        }
+        
         // syslinux
         getSyslinuxConfigFiles(directory).forEach(syslinuxConfigFile -> {
             PROCESS_EXECUTOR.executeProcess("sed", "-i", "-e",
@@ -507,6 +549,42 @@ public class SystemConfigTask implements Processable<String> {
         return configFiles;
     }
 
+
+    /**
+     * Load the generic BootConfigFile of the bootConfigPartition.
+     * <br>
+     * If the variable bootConfigPartition is null, the function will use the
+     * running system as bootConfigPartition.
+     *
+     * @return the bootConfigFile or null if it doesn't exist
+     * @throws DBusException
+     */
+    private File getGenericBootConfigFile() throws DBusException, IOException {
+
+        if (bootConfigPartition == null) {
+            // legacy system
+            File configFile = new File(WelcomeConstants.IMAGE_DIRECTORY + WelcomeConstants.BOOT_META);
+            if (configFile.exists()) {
+                return configFile;
+            }
+        } else {
+            // system with a separate boot partition
+            File configFile = bootConfigPartition.executeMounted(
+                    new Partition.Action<File>() {
+
+                @Override
+                public File execute(File mountPath) {
+                    return new File(mountPath + WelcomeConstants.BOOT_META);
+                }
+            });
+            if (configFile.exists()) {
+                return configFile;
+            }
+        }
+
+        return null;
+    }
+
     /**
      * Load the xmlBootConfigFile of the bootConfigPartition.
      * <br>
@@ -575,52 +653,6 @@ public class SystemConfigTask implements Processable<String> {
         return null;
     }
 
-    /**
-     * Loads the timeout out of the syslinuxConfigFile using a regex to match
-     * the timout value in the files.
-     *
-     * @return first occurence of the timeout or -1 if it couldn't be found.
-     * @throws IOException
-     * @throws DBusException
-     */
-    private int getTimeout() throws IOException, DBusException {
-        // use syslinux configuration as reference for the timeout setting
-        List<File> syslinuxConfigFiles;
-        if (bootConfigPartition == null) {
-            // legacy system
-            syslinuxConfigFiles = getSyslinuxConfigFiles(
-                    new File(WelcomeConstants.IMAGE_DIRECTORY));
-        } else {
-            // system with a separate boot partition
-            syslinuxConfigFiles = bootConfigPartition.executeMounted(
-                    new Partition.Action<List<File>>() {
-                @Override
-                public List<File> execute(File mountPath) {
-                    return getSyslinuxConfigFiles(mountPath);
-                }
-            });
-        }
-
-        Pattern timeoutPattern = Pattern.compile("timeout (.*)");
-        for (File syslinuxConfigFile : syslinuxConfigFiles) {
-            List<String> configFileLines
-                    = WelcomeUtil.readFile(syslinuxConfigFile);
-            for (String configFileLine : configFileLines) {
-                Matcher matcher = timeoutPattern.matcher(configFileLine);
-                if (matcher.matches()) {
-                    String timeoutString = matcher.group(1);
-                    try {
-                        return Integer.parseInt(timeoutString) / 10;
-                    } catch (NumberFormatException e) {
-                        LOGGER.log(Level.WARNING,
-                                "could not parse timeout value \"{0}\"",
-                                timeoutString);
-                    }
-                }
-            }
-        }
-        return -1;
-    }
 
     /**
      * Changes the password of the user by running {@code chpasswd} with the
